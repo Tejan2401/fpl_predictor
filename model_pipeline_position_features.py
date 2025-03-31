@@ -121,7 +121,7 @@ def get_all_predicted_players(file_path,gw_train, gw_test):
         y_test, y_pred, test_df = train_and_predict_model(position_df, globals()[f"features_{position.lower()}"], gw_train, gw_test)
 
         # Prepare results for each position
-        results = pd.DataFrame({"Player": test_df['player'], "Actual Points": y_test, "Predicted Points": y_pred})
+        results = pd.DataFrame({"Player": test_df['player'], "Predicted Points": y_pred})
 
         # Add the position column to the results
         results['Position'] = position
