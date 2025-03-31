@@ -19,7 +19,7 @@ else:
     st.subheader("Predicted Points - All Players")
 
     # 🔍 Search bar for player name (full table)
-    name_search = st.text_input("Search Player Name (for full table below)", "").lower()
+    name_search = st.text_input("Search for a player", "").lower()
 
     if name_search:
         filtered_df_full = df[df["Player"].str.lower().str.contains(name_search)]
