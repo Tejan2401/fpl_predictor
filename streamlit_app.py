@@ -69,7 +69,6 @@ else:
                     axis=1
                 )
                 st.success("✅ Captain selected!")
-                st.dataframe(edited_team)
                 st.markdown(f"### 🏆 Total Predicted Points: **{edited_team['Adjusted Points'].sum():.1f}**")
 
                 # Formation layout
@@ -94,7 +93,7 @@ else:
                 mids = edited_team_full[edited_team_full["Position"] == "MID"]
                 fwds = edited_team_full[edited_team_full["Position"] == "FWD"]
 
-                st.markdown("##### 🧬 Goalkeeper")
+                st.markdown("##### 🧤 Goalkeeper")
                 render_row(gk)
 
                 st.markdown("##### 🛡️ Defenders")
@@ -103,7 +102,7 @@ else:
                 st.markdown("##### 🎨 Midfielders")
                 render_row(mids)
 
-                st.markdown("##### 🌟 Forwards")
+                st.markdown("##### 🎯 Forwards")
                 render_row(fwds)
 
             elif len(captains_selected) > 1:
