@@ -1,32 +1,33 @@
-    st.subheader("🧩 Build Your Fantasy Team")
+import streamlit as st
+st.subheader("🧩 Build Your Fantasy Team")
 
-    MAX_PLAYERS = 11
-    POSITION_LIMITS = {
+MAX_PLAYERS = 11
+POSITION_LIMITS = {
         "GKP": 1,
         "DEF": 5,
         "MID": 5,
         "FWD": 3
     }
 
-    selected_players = st.multiselect(
+selected_players = st.multiselect(
         "Select up to 11 players (follow FPL rules)",
         options=df["Player"],
         default=[],
     )
 
-    team_df = df[df["Player"].isin(selected_players)]
+team_df = df[df["Player"].isin(selected_players)]
 
-    # Count players by position
-    position_counts = team_df["Position"].value_counts().to_dict()
+# Count players by position
+position_counts = team_df["Position"].value_counts().to_dict()
 
     # Validation
-    error_msgs = []
-    if len(selected_players) > MAX_PLAYERS:
-        error_msgs.append("You can only select 11 players total.")
+error_msgs = []
+if len(selected_players) > MAX_PLAYERS:
+    error_msgs.append("You can only select 11 players total.")
 
-    for pos, limit in POSITION_LIMITS.items():
-        if position_counts.get(pos, 0) > limit:
-            error_msgs.append(f"Too many {pos}s selected (max {limit}).")
+for pos, limit in POSITION_LIMITS.items():
+    if position_counts.get(pos, 0) > limit:
+        error_msgs.append(f"Too many {pos}s selected (max {limit}).")
 
     if error_msgs:
         st.error("⚠️ Invalid team:\n" + "\n".join(error_msgs))
