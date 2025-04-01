@@ -76,7 +76,7 @@ else:
 
                 # Formation layout
                 st.markdown("---")
-                st.markdown("### ⚽ Formation View")
+                st.markdown("Pitch View")
 
                 captain_name = captains_selected.iloc[0]["Player"]
                 edited_team_full = edited_team.copy()
@@ -87,8 +87,8 @@ else:
                     for col, (_, player) in zip(cols, players.iterrows()):
                         name = player["Player"]
                         is_captain = "⭐" if name == captain_name else ""
-                        col.markdown(f"**{is_captain} {name}**")
-                        col.markdown(f"*{player['Position']}*")
+                        col.markdown(f"{is_captain} {name}")
+                        col.markdown(f"{player['Position']}")
                         col.markdown(f"{player['Predicted Points']:.1f} pts")
 
                 gk = edited_team_full[edited_team_full["Position"] == "GKP"]
