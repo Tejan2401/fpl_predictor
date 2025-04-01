@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
+import streamlit as st
+
+st.set_page_config(layout="wide")
 
 CACHE_FILE = "weekly_predictions.csv"
 
@@ -93,22 +96,22 @@ else:
                 mids = edited_team_full[edited_team_full["Position"] == "MID"]
                 fwds = edited_team_full[edited_team_full["Position"] == "FWD"]
 
-                st.markdown("##### 🧤 Goalkeeper")
+                st.markdown("🧤 Goalkeeper")
                 render_row(gk)
 
-                st.markdown("##### 🛡️ Defenders")
+                st.markdown("🛡️ Defenders")
                 render_row(defs)
 
-                st.markdown("##### 🎨 Midfielders")
+                st.markdown("🎨 Midfielders")
                 render_row(mids)
 
-                st.markdown("##### 🎯 Forwards")
+                st.markdown("🎯 Forwards")
                 render_row(fwds)
 
             elif len(captains_selected) > 1:
-                st.error("❌ You can only select **one** captain.")
+                st.error("❌ You can only select one captain.")
             else:
-                st.info("☝️ Select a captain to see adjusted points.")
+                st.info("☝️ Select a captain to see total points.")
 
         elif len(selected_players) > 11:
-            st.error("You can only select **11 players**.")
+            st.error("You can only select 11 players.")
