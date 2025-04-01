@@ -32,7 +32,7 @@ else:
     col1, col2 = st.columns([2, 3])
 
     with col1:
-        st.markdown("### 📋 Player Pool")
+        st.markdown("### 📋 All Players")
         st.dataframe(filtered_df_full)
 
     with col2:
@@ -50,13 +50,13 @@ else:
         if len(selected_players) == 11:
             # Display editable team with checkbox for captain selection
             team_df_display = team_df[["Player", "Position", "Predicted Points"]].copy()
-            team_df_display["Captain?"] = False
+            team_df_display["Captain"] = False
 
             edited_team = st.data_editor(
                 team_df_display,
                 column_config={
-                    "Captain?": st.column_config.CheckboxColumn(
-                        label="Captain?",
+                    "Captain": st.column_config.CheckboxColumn(
+                        label="Captain",
                         help="Select one player to be captain"
                     )
                 },
@@ -64,11 +64,11 @@ else:
                 num_rows="fixed"
             )
 
-            captains_selected = edited_team[edited_team["Captain?"] == True]
+            captains_selected = edited_team[edited_team["Captain"] == True]
 
             if len(captains_selected) == 1:
                 edited_team["Adjusted Points"] = edited_team.apply(
-                    lambda row: row["Predicted Points"] * 2 if row["Captain?"] else row["Predicted Points"],
+                    lambda row: row["Predicted Points"] * 2 if row["Captain"] else row["Predicted Points"],
                     axis=1
                 )
                 st.success("✅ Captain selected!")
@@ -76,7 +76,6 @@ else:
 
                 # Formation layout
                 st.markdown("---")
-                st.markdown("####Pitch View")
 
                 captain_name = captains_selected.iloc[0]["Player"]
                 edited_team_full = edited_team.copy()
@@ -88,7 +87,6 @@ else:
                         name = player["Player"]
                         is_captain = "⭐" if name == captain_name else ""
                         col.markdown(f"{is_captain} {name}")
-                        col.markdown(f"*{player['Position']}*")
                         col.markdown(f"{player['Predicted Points']:.1f} pts")
 
                 gk = edited_team_full[edited_team_full["Position"] == "GKP"]
