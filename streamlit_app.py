@@ -18,7 +18,8 @@ else:
 
     df = load_predictions()
     columns_to_show = ['Player', 'Position', 'Predicted Total Points']
-    st.dataframe(df[columns_to_show])
+    df = df[columns_to_show]
+
 
     st.subheader("Predicted Total Points - All Players")
 
