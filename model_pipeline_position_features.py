@@ -1,15 +1,54 @@
-
 import pandas as pd
-import numpy as np
 from xgboost import XGBRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
-import warnings
-warnings.filterwarnings("ignore")
+import numpy as np
 
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# Generate per 90 minute metrics for goals, xG, assists, and xA
+def generate_per_90_features(df):
+    df['rolling_goals_per_90_3'] = (df['rolling_goals_3'] / df['rolling_mins_3']) * 90
+    df['rolling_goals_per_90_10'] = (df['rolling_goals_10'] / df['rolling_mins_10']) * 90
+    df['season_goals_per_90'] = (df['season_avg_goals_scored'] / df['season_avg_minutes']) * 90
 
-# Features for each position
+    df['rolling_xg_per_90_3'] = (df['rolling_xg_3'] / df['rolling_mins_3']) * 90
+    df['rolling_xg_per_90_10'] = (df['rolling_xg_10'] / df['rolling_mins_10']) * 90
+    df['season_xg_per_90'] = (df['season_avg_expected_goals'] / df['season_avg_minutes']) * 90
+
+    df['rolling_assists_per_90_3'] = (df['rolling_assists_3'] / df['rolling_mins_3']) * 90
+    df['rolling_assists_per_90_10'] = (df['rolling_assists_10'] / df['rolling_mins_10']) * 90
+    df['season_assists_per_90'] = (df['season_avg_assists'] / df['season_avg_minutes']) * 90
+
+    df['rolling_xa_per_90_3'] = (df['rolling_xa_3'] / df['rolling_mins_3']) * 90
+    df['rolling_xa_per_90_10'] = (df['rolling_xa_10'] / df['rolling_mins_10']) * 90
+    df['season_xa_per_90'] = (df['season_avg_expected_assists'] / df['season_avg_minutes']) * 90
+
+    return df
+
+# Generate interaction and composite features
+def generate_interaction_features(df):
+    df['scoring_chances_3'] = df['rolling_xg_per_90_3'] * df['rolling_finishing_efficiency_3']
+    df['scoring_chances_10'] = df['rolling_xg_per_90_10'] * df['rolling_finishing_efficiency_10']
+
+    df['assist_chances_3'] = df['rolling_xa_per_90_3'] * df['rolling_teammate_clinicalness_3']
+    df['assist_chances_10'] = df['rolling_xa_per_90_10'] * df['rolling_teammate_clinicalness_10']
+
+    df['team_goal_involvement_3'] = (df['rolling_goals_3'] + df['rolling_assists_3']) / df['rolling_team_goals_3'] * 100
+    df['team_goal_involvement_10'] = (df['rolling_goals_10'] + df['rolling_assists_10']) / df['rolling_team_goals_10'] * 100
+
+    df['opponent_goal_concession_3'] = df['opponent_rolling_goals_conceded_3'] * df['relative_strength_attack']
+    df['opponent_goal_concession_10'] = df['opponent_rolling_goals_conceded_10'] * df['relative_strength_attack']
+
+    return df
+
+# Load and process data by position
+def load_and_process_data(file_path, position):
+    fpl_df = pd.read_csv(file_path)
+    position_df = fpl_df[fpl_df['position'] == position]
+    position_df = generate_per_90_features(position_df)
+    position_df = generate_interaction_features(position_df)
+    return position_df
+
+# Feature definitions by position
 features_gkp = ['is_home',
     'relative_strength_overall', 'relative_strength_defence', 'rolling_mins_3',
     'rolling_xgc_3', 'rolling_xgc_10', 'rolling_defensive_efficiency_3',
@@ -52,43 +91,30 @@ features_fwd = [
     'season_avg_expected_assists', 'opponent_goal_concession_3', 'opponent_goal_concession_10'
 ]
 
-#Loading and processing data
-def load_and_process_data(file_path, position):
-    print(f"DEBUG: file_path = {file_path} ({type(file_path)})")
-    fpl_df = pd.read_csv(file_path)
-    position_df = fpl_df[fpl_df['position'] == position]
-    return position_df
-
-# Model training and predictions
+# Model training and prediction
 def train_and_predict_model(position_df, features, gw_train, gw_test):
     train_df = position_df[position_df['GW'] <= gw_train]
     test_df = position_df[position_df['GW'] == gw_test]
 
-    # One-hot encode the 'difficulty' column for both training and testing sets
+    # One-hot encode difficulty
     train_encoded = pd.get_dummies(train_df['difficulty'], prefix='difficulty', dtype='int8')
     test_encoded = pd.get_dummies(test_df['difficulty'], prefix='difficulty', dtype='int8')
 
-    # Concatenate encoded columns with the original features
     X_train = pd.concat([train_df[features], train_encoded], axis=1)
     X_test = pd.concat([test_df[features], test_encoded], axis=1)
 
-    # Handle any mismatches in the encoded columns between train and test
     X_train, X_test = X_train.align(X_test, join='outer', axis=1, fill_value=0)
 
-    # Prepare the target variable
-    y_train = train_df['total_points']
-    y_test = test_df['total_points']
+    y_train = train_df['total_points'] - train_df['bonus']
+    y_test = test_df['total_points'] - test_df['bonus']
 
-    # Handle missing values by allowing XGBoost to handle NaNs natively
     X_train.replace([float('inf'), -float('inf')], float('nan'), inplace=True)
     X_test.replace([float('inf'), -float('inf')], float('nan'), inplace=True)
 
-    # Scale the features using StandardScaler
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Initialize and train the XGBoost model
     xgb_model = XGBRegressor(
         n_estimators=100,
         learning_rate=0.055,
@@ -100,51 +126,60 @@ def train_and_predict_model(position_df, features, gw_train, gw_test):
         reg_lambda=0.1,
         random_state=42
     )
-
-    # Fit the model to the training data
     xgb_model.fit(X_train_scaled, y_train)
-
-    # Predict for the test set (GW_TEST))
     y_pred = xgb_model.predict(X_test_scaled)
+
     return y_test, y_pred, test_df
 
-# Main function to handle prediction for all positions and return the players
+# Main function to get predicted players
 def get_all_predicted_players(file_path,gw_train, gw_test):
     positions = ['GKP', 'DEF', 'MID', 'FWD']
     all_predictions = []
 
-    # Iterate over each position to train and predict
     for position in positions:
         position_df = load_and_process_data(file_path, position)
 
-        # Train the model for the given position
-        y_test, y_pred, test_df = train_and_predict_model(position_df, globals()[f"features_{position.lower()}"], gw_train, gw_test)
+        y_test, y_pred, test_df = train_and_predict_model(
+            position_df, globals()[f"features_{position.lower()}"], gw_train, gw_test
+        )
 
-        # Prepare results for each position
-        results = pd.DataFrame({"Player": test_df['player'], "Predicted Points": y_pred})
+        test_df['predicted_base_points'] = y_pred
+        test_df['Position'] = position
+        all_predictions.append(test_df)
 
-        # Add the position column to the results
-        results['Position'] = position
+    combined_df = pd.concat(all_predictions, axis=0)
+    combined_df['predicted_base_points'] = np.maximum(combined_df['predicted_base_points'], 0)
 
-        # Append the results to the all_predictions list
-        all_predictions.append(results)
+    combined_df['rank'] = combined_df.groupby('fixture')['predicted_base_points'].rank(
+        ascending=False, method='first'
+    )
 
-    # Concatenate all predictions into one DataFrame
-    all_players_df = pd.concat(all_predictions, axis=0)
+    combined_df['predicted_bonus'] = 0
+    combined_df.loc[combined_df['rank'] == 1, 'predicted_bonus'] = 3
+    combined_df.loc[combined_df['rank'] == 2, 'predicted_bonus'] = 2
+    combined_df.loc[combined_df['rank'] == 3, 'predicted_bonus'] = 1
 
-    # Replace negative predicted points with 0
-    all_players_df['Predicted Points'] = np.maximum(all_players_df['Predicted Points'], 0)
+    combined_df['predicted_points'] = combined_df['predicted_base_points'] + combined_df['predicted_bonus']
 
-    # Return the DataFrame with all players (no sorting or filtering)
-    return all_players_df
+    results = combined_df[[
+        'player', 'Position', 'total_points', 'predicted_base_points',
+        'predicted_bonus', 'predicted_points'
+    ]].rename(columns={
+        'player': 'Player',
+        'predicted_base_points': 'Predicted Base Points',
+        'predicted_bonus': 'Predicted Bonus Points',
+        'predicted_points': 'Predicted Total Points'
+    })
+
+    return results
 # Main execution
 if __name__ == "__main__":
     file_path = "final_data.csv"
-    gw_train = 29
-    gw_test = 30
+    gw_train = 30
+    gw_test = 31
     all_players_df = get_all_predicted_players(file_path, gw_train, gw_test)
 
-    print(all_players_df.sort_values('Predicted Points', ascending=False).head(30))
+    print(all_players_df.sort_values('Predicted Total Points', ascending=False).head(30))
 
     # Save for Streamlit
     all_players_df.to_csv("weekly_predictions.csv", index=False)

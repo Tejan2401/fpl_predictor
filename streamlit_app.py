@@ -7,18 +7,20 @@ st.set_page_config(layout="wide")
 
 CACHE_FILE = "weekly_predictions.csv"
 
-st.title("⚽ FPL Points Predictor")
+st.title("⚽ FPL Points Predictor - GW 31")
 
 if not os.path.exists(CACHE_FILE):
-    st.warning("Predictions not found. Please run the pipeline (main.py) first.")
+    st.warning("Predictions not found")
 else:
     @st.cache_data
     def load_predictions():
         return pd.read_csv(CACHE_FILE)
 
     df = load_predictions()
+    columns_to_show = ['Player', 'Position', 'Predicted Total Points']
+    st.dataframe(df[columns_to_show])
 
-    st.subheader("Predicted Points - All Players")
+    st.subheader("Predicted Total Points - All Players")
 
     # Search
     name_search = st.text_input("Search for a player", "").lower()
@@ -27,7 +29,7 @@ else:
     else:
         filtered_df_full = df
 
-    filtered_df_full = filtered_df_full.sort_values("Predicted Points", ascending=False)
+    filtered_df_full = filtered_df_full.sort_values("Predicted Total Points", ascending=False)
 
     col1, col2 = st.columns([2, 3])
 
@@ -36,7 +38,7 @@ else:
         st.dataframe(filtered_df_full)
 
     with col2:
-        st.markdown("### ✅ Select Your Starting 11")
+        st.markdown("### Select Your Starting 11")
         selected_players = st.multiselect(
             "Choose up to 11 players",
             options=filtered_df_full["Player"].tolist(),
@@ -49,7 +51,7 @@ else:
 
         if len(selected_players) == 11:
             # Display editable team with checkbox for captain selection
-            team_df_display = team_df[["Player", "Position", "Predicted Points"]].copy()
+            team_df_display = team_df[["Player", "Position", "Predicted Total Points"]].copy()
             team_df_display["Captain"] = False
 
             edited_team = st.data_editor(
@@ -68,11 +70,11 @@ else:
 
             if len(captains_selected) == 1:
                 edited_team["Adjusted Points"] = edited_team.apply(
-                    lambda row: row["Predicted Points"] * 2 if row["Captain"] else row["Predicted Points"],
+                    lambda row: row["Predicted Total Points"] * 2 if row["Captain"] else row["Predicted Total Points"],
                     axis=1
                 )
-                st.success("✅ Captain selected!")
-                st.markdown(f"### 🏆 Total Predicted Points: **{edited_team['Adjusted Points'].sum():.1f}**")
+                st.success(" Captain selected!")
+                st.markdown(f"### 🏆 Predicted Total Points: **{edited_team['Adjusted Points'].sum():.1f}**")
 
                 # Formation layout
                 st.markdown("---")
@@ -87,7 +89,7 @@ else:
                         name = player["Player"]
                         is_captain = "⭐" if name == captain_name else ""
                         col.markdown(f"{is_captain} {name}")
-                        col.markdown(f"{player['Predicted Points']:.1f} pts")
+                        col.markdown(f"{player['Predicted Total Points']:.1f} pts")
 
                 gk = edited_team_full[edited_team_full["Position"] == "GKP"]
                 defs = edited_team_full[edited_team_full["Position"] == "DEF"]
@@ -107,9 +109,9 @@ else:
                 render_row(fwds)
 
             elif len(captains_selected) > 1:
-                st.error("❌ You can only select one captain.")
+                st.error("You can only select one captain.")
             else:
-                st.info("☝️ Select a captain to see total points.")
+                st.info("Select a captain to see total points.")
 
         elif len(selected_players) > 11:
             st.error("You can only select 11 players.")
