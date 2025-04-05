@@ -64,9 +64,12 @@ else:
 
         # # limit number of player in each team
         # # we have to add Team's columns
-        teams_df = df[df["Opponent"].isin(selected_players)]
-        if max(teams_df.value_counts()) > 3:
-            st.markdown(f"You can not select more than 3 players from the same team")
+        team_df = df[df["Player"].isin(selected_players)]
+
+        if "Opponent" in team_df.columns:
+            team_counts = team_df["Opponent"].value_counts()
+        if team_counts.max() > 3:
+            st.warning("⚠️ You can only select up to 3 players from the same team.")
 
         if selected_players:
             st.markdown(f"Players selected: **{len(selected_players)}** / 11")
