@@ -5,7 +5,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 
-CACHE_FILE = "weekly_predictions(2).csv"
+CACHE_FILE = "weekly_predictions.csv"
 
 st.title("⚽ FPL Points Predictor - GW 31")
 
