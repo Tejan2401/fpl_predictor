@@ -50,10 +50,10 @@ else:
         # *** Xavier's code
         # you have to put a minimum of players for each position
         positions_df = df[df["Position"].isin(selected_players)]
-        nb_of_GK = len(positions_df == ['GK'])
-        nb_of_def = len(positions_df == ['DEF'])
-        nb_of_mid = len(positions_df == ['MID'])
-        nb_of_fwd = len(positions_df == ['FWD'])
+        nb_of_GK = len(team_df[team_df["Position"] == "GKP"])
+        nb_of_def = len(team_df[team_df["Position"] == "DEF"])
+        nb_of_mid = len(team_df[team_df["Position"] == "MID"])
+        nb_of_fwd = len(team_df[team_df["Position"] == "FWD"])
 
         if selected_players:
             st.markdown(f"Players selected: **{len(selected_players)}** / 11")
