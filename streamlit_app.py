@@ -64,12 +64,9 @@ else:
 
         # # limit number of player in each team
         # # we have to add Team's columns
-        # teams_df = df[df["Teams"].isin(selected_players)]
-        # if max(teams_df.value_counts()) > 3:
-        #     st.markdown(f"You can not select more than 3 players of the same team")
-
-        if len(selected_players) == 11 and nb_of_GK == 1 and nb_of_def >2 and nb_of_fwd > 0 and nb_of_mid > 1:
-            # *** Back to Tejan code
+        teams_df = df[df["Opponent"].isin(selected_players)]
+        if max(teams_df.value_counts()) > 3:
+            st.markdown(f"You can not select more than 3 players from the same team")
 
         if selected_players:
             st.markdown(f"Players selected: **{len(selected_players)}** / 11")
