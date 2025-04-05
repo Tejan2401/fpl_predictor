@@ -4,53 +4,14 @@ from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 
-# Generate per 90 minute metrics for goals, xG, assists, and xA
-def generate_per_90_features(df):
-    df['rolling_goals_per_90_3'] = (df['rolling_goals_3'] / df['rolling_mins_3']) * 90
-    df['rolling_goals_per_90_10'] = (df['rolling_goals_10'] / df['rolling_mins_10']) * 90
-    df['season_goals_per_90'] = (df['season_avg_goals_scored'] / df['season_avg_minutes']) * 90
-
-    df['rolling_xg_per_90_3'] = (df['rolling_xg_3'] / df['rolling_mins_3']) * 90
-    df['rolling_xg_per_90_10'] = (df['rolling_xg_10'] / df['rolling_mins_10']) * 90
-    df['season_xg_per_90'] = (df['season_avg_expected_goals'] / df['season_avg_minutes']) * 90
-
-    df['rolling_assists_per_90_3'] = (df['rolling_assists_3'] / df['rolling_mins_3']) * 90
-    df['rolling_assists_per_90_10'] = (df['rolling_assists_10'] / df['rolling_mins_10']) * 90
-    df['season_assists_per_90'] = (df['season_avg_assists'] / df['season_avg_minutes']) * 90
-
-    df['rolling_xa_per_90_3'] = (df['rolling_xa_3'] / df['rolling_mins_3']) * 90
-    df['rolling_xa_per_90_10'] = (df['rolling_xa_10'] / df['rolling_mins_10']) * 90
-    df['season_xa_per_90'] = (df['season_avg_expected_assists'] / df['season_avg_minutes']) * 90
-
-    return df
-
-# Generate interaction and composite features
-def generate_interaction_features(df):
-    df['scoring_chances_3'] = df['rolling_xg_per_90_3'] * df['rolling_finishing_efficiency_3']
-    df['scoring_chances_10'] = df['rolling_xg_per_90_10'] * df['rolling_finishing_efficiency_10']
-
-    df['assist_chances_3'] = df['rolling_xa_per_90_3'] * df['rolling_teammate_clinicalness_3']
-    df['assist_chances_10'] = df['rolling_xa_per_90_10'] * df['rolling_teammate_clinicalness_10']
-
-    df['team_goal_involvement_3'] = (df['rolling_goals_3'] + df['rolling_assists_3']) / df['rolling_team_goals_3'] * 100
-    df['team_goal_involvement_10'] = (df['rolling_goals_10'] + df['rolling_assists_10']) / df['rolling_team_goals_10'] * 100
-
-    df['opponent_goal_concession_3'] = df['opponent_rolling_goals_conceded_3'] * df['relative_strength_attack']
-    df['opponent_goal_concession_10'] = df['opponent_rolling_goals_conceded_10'] * df['relative_strength_attack']
-
-    return df
-
 # Load and process data by position
 def load_and_process_data(file_path, position):
     fpl_df = pd.read_csv(file_path)
     position_df = fpl_df[fpl_df['position'] == position]
-    position_df = generate_per_90_features(position_df)
-    position_df = generate_interaction_features(position_df)
     return position_df
 
 # Feature definitions by position
-features_gkp = ['is_home',
-    'relative_strength_overall', 'relative_strength_defence', 'rolling_mins_3',
+features_gkp = ['is_home','relative_strength_defence', 'rolling_mins_3',
     'rolling_xgc_3', 'rolling_xgc_10', 'rolling_defensive_efficiency_3',
     'rolling_defensive_efficiency_10', 'rolling_clean_sheets_3', 'rolling_clean_sheets_10',
     'rolling_saves_3', 'rolling_saves_10', 'season_avg_defensive_efficiency',
@@ -58,7 +19,7 @@ features_gkp = ['is_home',
     'season_avg_expected_goals_conceded'
 ]
 
-features_def = [
+features_def = ['is_home',
     'relative_strength_defence', 'rolling_xgc_3', 'rolling_xgc_10', 'rolling_clean_sheets_3',
     'rolling_clean_sheets_10', 'rolling_defensive_efficiency_3', 'rolling_defensive_efficiency_10',
     'opponent_rolling_goals_conceded_3', 'opponent_rolling_goals_conceded_10', 'season_avg_clean_sheets',
@@ -68,7 +29,7 @@ features_def = [
     'season_avg_expected_goals', 'season_avg_expected_assists','rolling_mins_3'
 ]
 
-features_mid = [
+features_mid = ['is_home',
     'rolling_goals_per_90_3', 'rolling_goals_per_90_10', 'season_goals_per_90',
     'rolling_xg_per_90_3', 'rolling_xg_per_90_10', 'season_xg_per_90',
     'rolling_assists_per_90_3', 'rolling_assists_per_90_10', 'season_assists_per_90',
@@ -76,17 +37,17 @@ features_mid = [
     'team_goal_involvement_3', 'team_goal_involvement_10', 'rolling_mins_3',
     'relative_strength_attack', 'rolling_team_goals_10', 'opponent_rolling_goals_conceded_10', 'season_avg_team_goals_scored', 'season_avg_goals_scored',
     'season_avg_assists', 'season_avg_expected_goals', 'season_avg_expected_assists', 'opponent_goal_concession_3',
-    'opponent_goal_concession_10', 'relative_strength_overall', 'relative_strength_defence', 'rolling_clean_sheets_10'
+    'opponent_goal_concession_10', 'relative_strength_overall', 'rolling_clean_sheets_10'
 ]
 
-features_fwd = [
+features_fwd = ['is_home',
     'rolling_goals_per_90_3', 'rolling_goals_per_90_10', 'season_goals_per_90',
     'rolling_xg_per_90_3', 'rolling_xg_per_90_10', 'season_xg_per_90', 'rolling_assists_per_90_10', 'season_assists_per_90',
     'rolling_xa_per_90_3', 'rolling_xa_per_90_10', 'season_xa_per_90',
     'scoring_chances_3', 'scoring_chances_10', 'assist_chances_3', 'assist_chances_10',
     'team_goal_involvement_3', 'team_goal_involvement_10', 'rolling_mins_3',
     'relative_strength_attack', 'rolling_team_goals_10',
-    'opponent_rolling_goals_conceded_3', 'opponent_rolling_goals_conceded_10', 'season_avg_team_goals_scored',
+    'opponent_rolling_goals_conceded_3', 'opponent_rolling_goals_conceded_10','opponent_rolling_expected_goals_conceded_3', 'opponent_rolling_expected_goals_conceded_10', 'season_avg_team_goals_scored',
     'season_avg_goals_scored', 'season_avg_assists', 'season_avg_expected_goals',
     'season_avg_expected_assists', 'opponent_goal_concession_3', 'opponent_goal_concession_10'
 ]
@@ -123,9 +84,11 @@ def train_and_predict_model(position_df, features, gw_train, gw_test):
         colsample_bytree=0.8,
         gamma=0.1,
         reg_alpha=0.1,
-        reg_lambda=0.1,
-        random_state=42
+        reg_lambda=0.1,random_state=20
     )
+
+
+
     xgb_model.fit(X_train_scaled, y_train)
     y_pred = xgb_model.predict(X_test_scaled)
 
@@ -179,7 +142,7 @@ if __name__ == "__main__":
     gw_test = 31
     all_players_df = get_all_predicted_players(file_path, gw_train, gw_test)
 
-    print(all_players_df.sort_values('Predicted Total Points', ascending=False).head(30))
+    print(all_players_df.sort_values('Predicted Total Points', ascending=False).head(40))
 
     # Save for Streamlit
     all_players_df.to_csv("weekly_predictions.csv", index=False)

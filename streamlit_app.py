@@ -5,7 +5,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 
-CACHE_FILE = "weekly_predictions.csv"
+CACHE_FILE = "weekly_predictions(2).csv"
 
 st.title("⚽ FPL Points Predictor - GW 31")
 
@@ -17,7 +17,7 @@ else:
         return pd.read_csv(CACHE_FILE)
 
     df = load_predictions()
-    columns_to_show = ['Player', 'Position', 'Predicted Total Points']
+    columns_to_show = ['Player','Position','Opponent','H/A','Predicted Total Points']
     df = df[columns_to_show]
 
 

@@ -503,7 +503,7 @@ def calculate_opponent_rolling_goals_conceded(df, windows=[3, 10]):
 def calculate_opponent_rolling_expected_goals_conceded(df, windows=[3, 10]):
     """Calculate the rolling expected goals conceded by the opponent for multiple window sizes."""
     for window in windows:
-        col_name = f'opponent_rolling_goals_conceded_{window}'
+        col_name = f'opponent_rolling_expected_goals_conceded_{window}'
         df[col_name] = 0.0
         # Loop through each row in the dataset and calculate rolling goals conceded for the opponent
         for idx, row in df.iterrows():
@@ -514,13 +514,13 @@ def calculate_opponent_rolling_expected_goals_conceded(df, windows=[3, 10]):
 
             if not opponent_data.empty:
                 # Group by the opponent team and get the max goals conceded for each gameweek
-                opponent_max_goals_conceded = opponent_data.groupby('GW')['expected_goals_conceded'].max()
+                opponent_max_x_goals_conceded = opponent_data.groupby('GW')['expected_goals_conceded'].max()
 
                 # Calculate the rolling mean of the max goals conceded for the past 'window' gameweeks
-                rolling_goals_conceded = opponent_max_goals_conceded.rolling(window=window, min_periods=1).mean()
+                rolling_x_goals_conceded = opponent_max_x_goals_conceded.rolling(window=window, min_periods=1).mean()
 
                 # Store the rolling goals conceded for this row
-                df.at[idx, col_name] = rolling_goals_conceded.iloc[-1]
+                df.at[idx, col_name] = rolling_x_goals_conceded.iloc[-1]
 
     return df
 
@@ -551,6 +551,10 @@ final_df = calculate_rolling_team_metrics(final_df)
 
 print("Calculating opponent rolling goals conceded...")
 final_df = calculate_opponent_rolling_goals_conceded(final_df)
+
+print("Calculating opponent rolling expected goals conceded...")
+final_df = calculate_opponent_rolling_expected_goals_conceded(final_df)
+
 
 print("Adding binary features...")
 final_df = add_binary_features(final_df)
@@ -639,8 +643,8 @@ def generate_interaction_features(df):
     df['team_goal_involvement_3'] = (df['rolling_goals_3'] + df['rolling_assists_3']) / df['rolling_team_goals_3'] * 100
     df['team_goal_involvement_10'] = (df['rolling_goals_10'] + df['rolling_assists_10']) / df['rolling_team_goals_10'] * 100
 
-    df['opponent_goal_concession_3'] = df['opponent_rolling_goals_conceded_3'] * df['relative_strength_attack']
-    df['opponent_goal_concession_10'] = df['opponent_rolling_goals_conceded_10'] * df['relative_strength_attack']
+    df['opponent_goal_concession_3'] = df['opponent_rolling_expected_goals_conceded_3'] * df['relative_strength_attack']
+    df['opponent_goal_concession_10'] = df['opponent_rolling_expected_goals_conceded_10'] * df['relative_strength_attack']
 
     return df
 
