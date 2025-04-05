@@ -47,6 +47,30 @@ else:
         )
         team_df = df[df["Player"].isin(selected_players)]
 
+        # *** Xavier's code
+        # you have to put a minimum of players for each position
+        positions_df = df[df["Position"].isin(selected_players)]
+        nb_of_GK = len(positions_df == ['GK'])
+        nb_of_def = len(positions_df == ['DEF'])
+        nb_of_mid = len(positions_df == ['MID'])
+        nb_of_fwd = len(positions_df == ['FWD'])
+
+        if selected_players:
+            st.markdown(f"Players selected: **{len(selected_players)}** / 11")
+            st.markdown(f"GK selected: **{nb_of_GK}** / 1")
+            st.markdown(f"DEF selected: **{nb_of_def}** out of a minimum of 3")
+            st.markdown(f"MID selected: **{nb_of_mid}** out of a minimum of 2")
+            st.markdown(f"FWD selected: **{nb_of_fwd}** out of a minimum of 1")
+
+        # # limit number of player in each team
+        # # we have to add Team's columns
+        # teams_df = df[df["Teams"].isin(selected_players)]
+        # if max(teams_df.value_counts()) > 3:
+        #     st.markdown(f"You can not select more than 3 players of the same team")
+
+        if len(selected_players) == 11 and nb_of_GK == 1 and nb_of_def >2 and nb_of_fwd > 0 and nb_of_mid > 1:
+            # *** Back to Tejan code
+
         if selected_players:
             st.markdown(f"Players selected: **{len(selected_players)}** / 11")
 
