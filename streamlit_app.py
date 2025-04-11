@@ -14,24 +14,28 @@ else:
     def load_predictions():
         df = pd.read_csv(CACHE_FILE)
 
-        # Filter for the latest Gameweek
+        # Get latest Gameweek
         latest_gw = df["GW"].max()
         df = df[df["GW"] == latest_gw]
 
-        # Collapse double gameweeks by summing predicted points
-        df = df.groupby(["Player", "Position"], as_index=False)["Predicted Total Points"].sum()
+        # Group by player, keeping summed points + combined Opponent and H/A info
+        df_grouped = df.groupby(["Player", "Position"], as_index=False).agg({
+            "Predicted Total Points": "sum",
+            "Opponent": lambda x: ", ".join(x.astype(str)),
+            "H/A": lambda x: ", ".join(x.astype(str))
+        })
 
-        # Normalize player names
-        df["Player_clean"] = df["Player"].str.strip().str.lower()
-        df = df.drop_duplicates(subset=["Player_clean"])
+        # Clean player name for merging
+        df_grouped["Player_clean"] = df_grouped["Player"].str.strip().str.lower()
+        df_grouped = df_grouped.drop_duplicates(subset=["Player_clean"])
 
-        return df, latest_gw
+        return df_grouped, latest_gw
 
     df, latest_gw = load_predictions()
 
     st.subheader(f"Predicted Points for Gameweek {latest_gw}")
 
-    # 🔍 Search bar
+    # 🔍 Search
     name_search = st.text_input("Search for a player", "").lower()
     filtered_df = df.copy()
     if name_search:
@@ -43,7 +47,7 @@ else:
 
     with col1:
         st.markdown("### 📋 All Players")
-        st.dataframe(filtered_df[["Player", "Position", "Predicted Total Points"]])
+        st.dataframe(filtered_df[["Player", "Position", "Opponent", "H/A", "Predicted Total Points"]])
 
     with col2:
         st.markdown("### Select Your Starting 11")
@@ -55,7 +59,7 @@ else:
 
         team_df = df[df["Player"].isin(selected_players)]
 
-        # Count by position
+        # Count positions
         nb_GK = len(team_df[team_df["Position"] == "GKP"])
         nb_DEF = len(team_df[team_df["Position"] == "DEF"])
         nb_MID = len(team_df[team_df["Position"] == "MID"])
@@ -69,8 +73,8 @@ else:
             st.markdown(f"FWD selected: **{nb_FWD}** / min 1")
 
         if len(selected_players) == 11:
-            # Create editable view
-            display_df = team_df[["Player", "Position", "Predicted Total Points"]].copy()
+            # Editable team with captain checkbox
+            display_df = team_df[["Player", "Position", "Opponent", "H/A", "Predicted Total Points"]].copy()
             display_df["Captain"] = False
 
             edited_team = st.data_editor(
@@ -85,15 +89,24 @@ else:
                 num_rows="fixed"
             )
 
-            # Normalize and merge position info
+            # Normalize names for merge
             edited_team["Player_clean"] = edited_team["Player"].str.strip().str.lower()
 
-            # Merge with df safely
-            position_lookup = df[["Player_clean", "Position"]].rename(columns={"Position": "Merged_Position"})
-            edited_team_full = edited_team.merge(position_lookup, on="Player_clean", how="left")
+            # Merge with full data to get position/opponent/H/A
+            merged_df = df[["Player_clean", "Position", "Opponent", "H/A"]].rename(
+                columns={
+                    "Position": "Merged_Position",
+                    "Opponent": "Merged_Opponent",
+                    "H/A": "Merged_HA"
+                }
+            )
 
-            # Assign correct Position field
+            edited_team_full = edited_team.merge(merged_df, on="Player_clean", how="left")
+
+            # Assign merged fields back
             edited_team_full["Position"] = edited_team_full["Merged_Position"]
+            edited_team_full["Opponent"] = edited_team_full["Merged_Opponent"]
+            edited_team_full["H/A"] = edited_team_full["Merged_HA"]
 
             if "Position" not in edited_team_full.columns or edited_team_full["Position"].isna().any():
                 st.error("⚠️ Could not determine player positions after merging.")
@@ -112,7 +125,7 @@ else:
                     st.success("✅ Captain selected!")
                     st.markdown(f"### 🏆 Total Predicted Points: **{edited_team_full['Adjusted Points'].sum():.1f}**")
 
-                    # Render by position
+                    # Render players by position
                     def render_row(players):
                         cols = st.columns(len(players))
                         for col, (_, player) in zip(cols, players.iterrows()):
