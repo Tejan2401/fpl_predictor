@@ -7,7 +7,7 @@ st.set_page_config(layout="wide")
 
 CACHE_FILE = "weekly_predictions.csv"
 
-st.title("⚽ FPL Points Predictor - GW 31")
+st.title("⚽ FPL Points Predictor - GW 32")
 
 if not os.path.exists(CACHE_FILE):
     st.warning("Predictions not found")

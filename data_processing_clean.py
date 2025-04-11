@@ -357,7 +357,7 @@ final_df = encode_kickoff_and_location(final_df)
 
 print("Data preprocessing complete!")
 
-def fill_with_rolling_average(df, gw_threshold=29): #eventually use an if statement to check current gw_threshold based on date/time
+def fill_with_rolling_average(df, gw_threshold=31): #eventually use an if statement to check current gw_threshold based on date/time
     """
     Impute missing values for statistics by filling with a rolling average.
     This assumes players continue at the level of their current (3/5 week?) average.
