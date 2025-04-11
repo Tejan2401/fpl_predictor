@@ -5,3 +5,4 @@ xgboost
 tqdm
 requests
 scikit-learn
+pyarrow

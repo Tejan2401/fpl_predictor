@@ -1,86 +1,80 @@
 import streamlit as st
 import pandas as pd
 import os
-import streamlit as st
 
 st.set_page_config(layout="wide")
-
 CACHE_FILE = "weekly_predictions.csv"
 
-st.title("⚽ FPL Points Predictor - GW 32")
+st.title("⚽ FPL Points Predictor - GW Selector")
 
 if not os.path.exists(CACHE_FILE):
     st.warning("Predictions not found")
 else:
     @st.cache_data
     def load_predictions():
-        return pd.read_csv(CACHE_FILE)
+        df = pd.read_csv(CACHE_FILE)
 
-    df = load_predictions()
-    columns_to_show = ['Player','Position','Opponent','H/A','Predicted Total Points']
-    df = df[columns_to_show]
+        # Filter for the latest Gameweek
+        latest_gw = df["GW"].max()
+        df = df[df["GW"] == latest_gw]
 
+        # Collapse double gameweeks by summing predicted points
+        df = df.groupby(["Player", "Position"], as_index=False)["Predicted Total Points"].sum()
 
-    st.subheader("Predicted Total Points - All Players")
+        # Normalize player names
+        df["Player_clean"] = df["Player"].str.strip().str.lower()
+        df = df.drop_duplicates(subset=["Player_clean"])
 
-    # Search
+        return df, latest_gw
+
+    df, latest_gw = load_predictions()
+
+    st.subheader(f"Predicted Points for Gameweek {latest_gw}")
+
+    # 🔍 Search bar
     name_search = st.text_input("Search for a player", "").lower()
+    filtered_df = df.copy()
     if name_search:
-        filtered_df_full = df[df["Player"].str.lower().str.contains(name_search)]
-    else:
-        filtered_df_full = df
+        filtered_df = df[df["Player"].str.lower().str.contains(name_search)]
 
-    filtered_df_full = filtered_df_full.sort_values("Predicted Total Points", ascending=False)
+    filtered_df = filtered_df.sort_values("Predicted Total Points", ascending=False)
 
     col1, col2 = st.columns([2, 3])
 
     with col1:
         st.markdown("### 📋 All Players")
-        st.dataframe(filtered_df_full)
+        st.dataframe(filtered_df[["Player", "Position", "Predicted Total Points"]])
 
     with col2:
         st.markdown("### Select Your Starting 11")
         selected_players = st.multiselect(
             "Choose up to 11 players",
-            options=filtered_df_full["Player"].tolist(),
+            options=filtered_df["Player"].tolist(),
             max_selections=11,
         )
+
         team_df = df[df["Player"].isin(selected_players)]
 
-        # *** Xavier's code
-        # you have to put a minimum of players for each position
-        positions_df = df[df["Position"].isin(selected_players)]
-        nb_of_GK = len(team_df[team_df["Position"] == "GKP"])
-        nb_of_def = len(team_df[team_df["Position"] == "DEF"])
-        nb_of_mid = len(team_df[team_df["Position"] == "MID"])
-        nb_of_fwd = len(team_df[team_df["Position"] == "FWD"])
+        # Count by position
+        nb_GK = len(team_df[team_df["Position"] == "GKP"])
+        nb_DEF = len(team_df[team_df["Position"] == "DEF"])
+        nb_MID = len(team_df[team_df["Position"] == "MID"])
+        nb_FWD = len(team_df[team_df["Position"] == "FWD"])
 
         if selected_players:
             st.markdown(f"Players selected: **{len(selected_players)}** / 11")
-            st.markdown(f"GK selected: **{nb_of_GK}** / 1")
-            st.markdown(f"DEF selected: **{nb_of_def}** out of a minimum of 3")
-            st.markdown(f"MID selected: **{nb_of_mid}** out of a minimum of 2")
-            st.markdown(f"FWD selected: **{nb_of_fwd}** out of a minimum of 1")
-
-        # # limit number of player in each team
-        # # we have to add Team's columns
-        team_df = df[df["Player"].isin(selected_players)]
-
-        if "Opponent" in team_df.columns:
-            team_counts = team_df["Opponent"].value_counts()
-        if team_counts.max() > 3:
-            st.warning("⚠️ You can only select up to 3 players from the same team.")
-
-        if selected_players:
-            st.markdown(f"Players selected: **{len(selected_players)}** / 11")
+            st.markdown(f"GK selected: **{nb_GK}** / 1")
+            st.markdown(f"DEF selected: **{nb_DEF}** / min 3")
+            st.markdown(f"MID selected: **{nb_MID}** / min 2")
+            st.markdown(f"FWD selected: **{nb_FWD}** / min 1")
 
         if len(selected_players) == 11:
-            # Display editable team with checkbox for captain selection
-            team_df_display = team_df[["Player", "Position", "Predicted Total Points"]].copy()
-            team_df_display["Captain"] = False
+            # Create editable view
+            display_df = team_df[["Player", "Position", "Predicted Total Points"]].copy()
+            display_df["Captain"] = False
 
             edited_team = st.data_editor(
-                team_df_display,
+                display_df,
                 column_config={
                     "Captain": st.column_config.CheckboxColumn(
                         label="Captain",
@@ -91,52 +85,62 @@ else:
                 num_rows="fixed"
             )
 
-            captains_selected = edited_team[edited_team["Captain"] == True]
+            # Normalize and merge position info
+            edited_team["Player_clean"] = edited_team["Player"].str.strip().str.lower()
 
-            if len(captains_selected) == 1:
-                edited_team["Adjusted Points"] = edited_team.apply(
-                    lambda row: row["Predicted Total Points"] * 2 if row["Captain"] else row["Predicted Total Points"],
-                    axis=1
-                )
-                st.success(" Captain selected!")
-                st.markdown(f"### 🏆 Predicted Total Points: **{edited_team['Adjusted Points'].sum():.1f}**")
+            # Merge with df safely
+            position_lookup = df[["Player_clean", "Position"]].rename(columns={"Position": "Merged_Position"})
+            edited_team_full = edited_team.merge(position_lookup, on="Player_clean", how="left")
 
-                # Formation layout
-                st.markdown("---")
+            # Assign correct Position field
+            edited_team_full["Position"] = edited_team_full["Merged_Position"]
 
-                captain_name = captains_selected.iloc[0]["Player"]
-                edited_team_full = edited_team.copy()
-                edited_team_full["Position"] = team_df.set_index("Player").loc[edited_team["Player"], "Position"].values
-
-                def render_row(players):
-                    cols = st.columns(len(players))
-                    for col, (_, player) in zip(cols, players.iterrows()):
-                        name = player["Player"]
-                        is_captain = "⭐" if name == captain_name else ""
-                        col.markdown(f"{is_captain} {name}")
-                        col.markdown(f"{player['Predicted Total Points']:.1f} pts")
-
-                gk = edited_team_full[edited_team_full["Position"] == "GKP"]
-                defs = edited_team_full[edited_team_full["Position"] == "DEF"]
-                mids = edited_team_full[edited_team_full["Position"] == "MID"]
-                fwds = edited_team_full[edited_team_full["Position"] == "FWD"]
-
-                st.markdown("🧤 Goalkeeper")
-                render_row(gk)
-
-                st.markdown("🛡️ Defenders")
-                render_row(defs)
-
-                st.markdown("🎨 Midfielders")
-                render_row(mids)
-
-                st.markdown("🎯 Forwards")
-                render_row(fwds)
-
-            elif len(captains_selected) > 1:
-                st.error("You can only select one captain.")
+            if "Position" not in edited_team_full.columns or edited_team_full["Position"].isna().any():
+                st.error("⚠️ Could not determine player positions after merging.")
+                st.write("⚠️ Debug info:", edited_team_full)
             else:
-                st.info("Select a captain to see total points.")
+                captains_selected = edited_team_full[edited_team_full["Captain"] == True]
 
+                if len(captains_selected) == 1:
+                    captain_name = captains_selected.iloc[0]["Player"]
+
+                    edited_team_full["Adjusted Points"] = edited_team_full.apply(
+                        lambda row: row["Predicted Total Points"] * 2 if row["Captain"] else row["Predicted Total Points"],
+                        axis=1
+                    )
+
+                    st.success("✅ Captain selected!")
+                    st.markdown(f"### 🏆 Total Predicted Points: **{edited_team_full['Adjusted Points'].sum():.1f}**")
+
+                    # Render by position
+                    def render_row(players):
+                        cols = st.columns(len(players))
+                        for col, (_, player) in zip(cols, players.iterrows()):
+                            is_captain = "⭐" if player["Player"] == captain_name else ""
+                            col.markdown(f"{is_captain} {player['Player']}")
+                            col.markdown(f"{player['Predicted Total Points']:.1f} pts")
+
+                    gk = edited_team_full[edited_team_full["Position"] == "GKP"]
+                    defs = edited_team_full[edited_team_full["Position"] == "DEF"]
+                    mids = edited_team_full[edited_team_full["Position"] == "MID"]
+                    fwds = edited_team_full[edited_team_full["Position"] == "FWD"]
+
+                    st.markdown("---")
+                    st.markdown("🧤 Goalkeeper")
+                    render_row(gk)
+
+                    st.markdown("🛡️ Defenders")
+                    render_row(defs)
+
+                    st.markdown("🎨 Midfielders")
+                    render_row(mids)
+
+                    st.markdown("🎯 Forwards")
+                    render_row(fwds)
+
+                elif len(captains_selected) > 1:
+                    st.error("🚫 You can only select **one** captain.")
+                else:
+                    st.info("☑️ Select a captain to see total points.")
         elif len(selected_players) > 11:
-            st.error("You can only select 11 players.")
+            st.error("🚫 You can only select **11** players.")
